@@ -1,7 +1,7 @@
 package main
 
 import (
-	"WebSocket/myws"
+	"github.com/laiason/go-websocket/myws"
 	"net/http"
 	"github.com/gorilla/websocket"
 )
