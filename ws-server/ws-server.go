@@ -1,9 +1,8 @@
 package ws_server
 
 import (
-	"net/http"
 	"github.com/gorilla/websocket"
-	"strconv"
+	"net/http"
 )
 
 var (
@@ -15,7 +14,7 @@ var (
 	}
 )
 
-func wsHandler(response http.ResponseWriter, request *http.Request) {
+func WsHandler(response http.ResponseWriter, request *http.Request) {
 	var (
 		data []byte
 		wsConn *websocket.Conn
@@ -39,11 +38,4 @@ func wsHandler(response http.ResponseWriter, request *http.Request) {
 
 ERR :
 	wsConn.Close()
-}
-
-func Start(ip string, port int) {
-	http.HandleFunc("/ws", wsHandler)
-
-	addr := ip + ":" + strconv.Itoa(port)
-	http.ListenAndServe(addr, nil)
 }
