@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
@@ -20,14 +21,23 @@ type Server struct {
 // websocket消息格式
 type wsMsg struct {
 	expiresTime int64
-	data []byte
+	data interface{}
 	wsConn *websocket.Conn
 }
 
-// http消息格式
+// websocket响应消息格式
+type wsResponse struct {
+	Code int `json:"code"`
+	MsgKey string `json:"msg_key"`
+	Data interface{} `json:"data"`
+	ErrorMsg string `json:"error_msg"`
+}
+
+// http响应消息格式
 type httpResponse struct {
-	result int
-	msg string
+	Code int `json:"code"`
+	Data interface{} `json:"data"`
+	ErrorMsg string `json:"error_msg"`
 }
 
 // websocket消息有效时长
@@ -73,6 +83,10 @@ func wsHandler(response http.ResponseWriter, request *http.Request) {
 		msgMap[key] = &msg
 
 		fmt.Println(key)
+
+		if err = wsConn.WriteMessage(websocket.TextMessage, []byte(key)); err != nil {
+			goto ERR
+		}
 	}
 
 ERR :
@@ -81,66 +95,65 @@ ERR :
 
 // http处理函数
 func httpHandler(response http.ResponseWriter, request *http.Request)  {
-	//fmt.Println(111)
-	//// http返回结果
-	var httpResponseResult = httpResponse{result : 0, msg : ""}
-	//
-	//body, err := ioutil.ReadAll(request.Body)
-	//if err != nil {
-	//	log.Fatal("read body err：", err)
-	//	httpResponseResult.result = 1
-	//	httpResponseResult.msg = "read body err：" + err.Error()
-	//
-	//	return
-	//}
-	//
-	//// 将消息转成json格式
-	//var msg interface{}
-	//if err := json.Unmarshal(body, &msg); err != nil {
-	//	log.Fatal("json Unmarshal body err：", err)
-	//	return
-	//}
-	//
-	//// 将msg类型专线map类型
-	//requestData := msg.(map[string]interface{})
-	//mapKey := requestData["key"].(string)
-	//mapData, err := json.Marshal(requestData["data"])
-	//if err != nil {
-	//	log.Fatal("json Marshal data err：", err)
-	//	return
-	//}
-	//
-	//fmt.Println(mapKey)
-	//fmt.Println(mapData)
-	//
-	//if _, ok := msgMap[mapKey]; !ok {
-	//	log.Fatal("not exist key：", mapKey)
-	//	return
-	//}
-	//// 保存数据
-	//msgMap[mapKey].data = mapData
-	//
-	//// websocket链接
-	//wsConn := msgMap[mapKey].wsConn
-	//
-	//// 判断是否过期
-	//unixTime := time.Now().Unix()
-	//if unixTime > msgMap[mapKey].expiresTime {
-	//	log.Fatal("websocket connect expired，key：", mapKey)
-	//	wsConn.Close()
-	//	return
-	//}
-	//
-	//// 发送websocket数据
-	//if err := wsConn.WriteMessage(websocket.TextMessage, mapData); err != nil {
-	//	log.Fatal("websocket send message err：", err)
-	//	wsConn.Close()
-	//	return
-	//}
-	//response.Write([]byte("Hello, world!"))
-	rtn, _ := json.Marshal(httpResponseResult)
-	fmt.Println(rtn)
-	response.Write(rtn)
+	// http返回结果
+	var httpResponseResult = httpResponse{Code : 0, Data: struct {}{}, ErrorMsg : ""}
+
+	// 异常处理：必须要先声明defer，否则不能捕获到panic异常
+	defer func(result httpResponse, resp http.ResponseWriter){
+		if err := recover(); err != nil{
+			// 这里的err其实就是panic传入的内容
+			result.Code = 1
+			result.ErrorMsg = err.(string)
+			rtn, _ := json.Marshal(result)
+			resp.Write(rtn)
+		}
+	}(httpResponseResult, response)
+
+	body, err := ioutil.ReadAll(request.Body)
+	if err != nil {
+		panic("read body err：" + err.Error())
+	}
+
+	// 将消息转成json格式
+	var msg interface{}
+	if err := json.Unmarshal(body, &msg); err != nil {
+		panic("json Unmarshal body err：" + err.Error())
+	}
+
+	// 将msg类型专线map类型
+	requestData := msg.(map[string]interface{})
+	mapKey := requestData["key"].(string)
+	mapData:= requestData["data"]
+	if err != nil {
+		panic("json Marshal data err：" + err.Error())
+	}
+
+	if _, ok := msgMap[mapKey]; !ok {
+		panic("not exist key：" + mapKey)
+	}
+
+	// 保存数据
+	msgMap[mapKey].data = mapData
+	// websocket链接
+	wsConn := msgMap[mapKey].wsConn
+
+	// 判断是否过期
+	unixTime := time.Now().Unix()
+	if unixTime > msgMap[mapKey].expiresTime {
+		wsConn.Close()
+		panic("websocket connect expired，key：" + err.Error())
+	}
+
+	// 发送websocket数据
+	wsResp := wsResponse{Code : 0, MsgKey : mapKey, Data : mapData, ErrorMsg : ""}
+	wsRtn, _ := json.Marshal(wsResp)
+	if err := wsConn.WriteMessage(websocket.TextMessage, wsRtn); err != nil {
+		wsConn.Close()
+		panic("websocket send message err：" + err.Error())
+	}
+
+	httpRtn, _ := json.Marshal(httpResponseResult)
+	response.Write(httpRtn)
 }
 
 func main() {

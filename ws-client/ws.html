@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>测试websocket</title>
+    <script type="text/javascript" src="jquery-3.3.1.min.js"></script>
+    <script type="text/javascript" src = "vue.js"></script>
+    <script type="text/javascript" src = "md5.js"></script>
+</head>
+<body>
+    <div id = "app">
+        <input type="text" v-model = "key" name="">
+        <textarea v-model = "response"></textarea>    
+    </div>
+    
+    <script type="text/javascript">
+        var vm = new Vue({
+            el : '#app',
+            data : {
+                key : '',
+                response : ''
+            },
+            methods : {
+                get_key : function() {
+                    var timestamp = Date.parse(new Date());
+                    return hex_md5('lxj' + timestamp);
+                },
+                init_ws : function() {
+                    var that = this;
+                    var ws = new WebSocket("ws://127.0.0.1:8080");
+                    ws.onopen = function(evt) {
+                        console.log("Connection open ...");
+                        ws.send(that.key);
+                    };
+                    ws.onmessage = function(evt) {
+                        console.log("Received Message: " + evt.data);
+                        that.response = evt.data;
+                        // ws.close();
+                    };
+                    ws.onclose = function(evt) {
+                        console.log("Connection closed.");
+                    };
+                }   
+            },
+            mounted : function(){
+                this.key = this.get_key();
+                this.init_ws();    
+            }
+        });
+</script>
+</body>
+</html>
