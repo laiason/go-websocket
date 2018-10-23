@@ -1,0 +1,59 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>WebSocket Demo</title>
+
+    <script src="md5.js" type="text/javascript"></script>
+    <script src="jquery-1.8.3.js" type="text/javascript"></script>
+
+    <script type="text/javascript">
+        var ws, key;
+        function myWebsocketStart() {
+            ws = new WebSocket("ws://127.0.0.1:8080");
+
+            // ws.onopen = function() {
+            //     // Web Socket is connected, send data using send()
+            //     var myTextArea = document.getElementById("textarea1")
+            //     myTextArea.value = myTextArea.value + "\n" + "First message sent";
+            // };
+
+            ws.onmessage = function(evt) {
+                var myTextArea = document.getElementById("textarea1");
+                myTextArea.value = myTextArea.value + "\n" + evt.data;
+            };
+
+            ws.onclose = function() {
+                var myTextArea = document.getElementById("textarea1");
+                myTextArea.value = myTextArea.value + "\n" + "Connection closed";
+            };
+        }
+
+        function send() {
+            ws.send(key);
+        }
+
+        function generate_key() {
+            var url = window.location.href;
+            var timestamp = Date.parse( new Date());
+            var login_name = 'justinlai';
+            key = url + timestamp + login_name;
+            return hex_md5(key);
+        }
+
+        $(function(){
+            myWebsocketStart();
+            key = generate_key();
+            $('#msg').val(key);    
+        })
+    </script>
+</head>
+
+<body>
+    <input type="text" name="msg" id = "msg" style="width: 250px;">
+    <button onclick="javascript:send()">send</button>
+    <textarea id="textarea1" rows="5" cols="30"></textarea>
+</body>
+
+</html>
