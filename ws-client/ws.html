@@ -1,15 +1,35 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
     <title>测试websocket</title>
+    <link href="bootstrap-4.1.3/css/bootstrap.css" rel="stylesheet">
+
     <script type="text/javascript" src="jquery-3.3.1.min.js"></script>
     <script type="text/javascript" src = "vue.js"></script>
     <script type="text/javascript" src = "md5.js"></script>
+    <script type="text/javascript" src = "bootstrap-4.1.3/js/bootstrap.js"></script>
 </head>
 <body>
-    <div id = "app">
-        <input type="text" v-model = "key" name="">
-        <textarea v-model = "response"></textarea>    
+    <div id = "app" style="margin-left: 20px;">
+        <div class="col-md-6">
+            <form class="form" role="form">
+                <div class="form-group">
+                    <label for="name">消息key</label>
+                    <input type="text" class="form-control" v-model = "key" placeholder="">
+                </div>
+                <div class="form-group">
+                    <label for="inputfile">响应数据</label>
+                    <textarea class="form-control" v-model = "response" cols="30" rows="5"></textarea>
+                </div>
+                <hr/>
+                <div class="form-group">
+                    <label for="inputfile">PUSH数据</label>
+                    <textarea class="form-control" v-model = "push_data" cols="30" rows="5"></textarea>
+                </div>
+                <button type="button" @click = "send_push_data" class="btn btn-primary">发送</button>
+            </form>
+        </div>
     </div>
     
     <script type="text/javascript">
@@ -17,16 +37,31 @@
             el : '#app',
             data : {
                 key : '',
-                response : ''
+                response : '',
+                push_data : '',
+                ws_url : 'ws://127.0.0.1:8080',
+                http_url : 'http://127.0.0.1:8081',
             },
             methods : {
                 get_key : function() {
-                    var timestamp = Date.parse(new Date());
-                    return hex_md5('lxj' + timestamp);
+                    var url = window.location.href;
+                    var timestamp = Date.parse( new Date());
+                    var login_name = 'justinlai';
+                    key = url + timestamp + login_name;
+                    return hex_md5(key);
+                },
+                get_push_data : function(){
+                    var obj = {
+                        key : this.key,
+                        data : {
+                            action: "open"
+                        }
+                    };
+                    return JSON.stringify(obj)
                 },
                 init_ws : function() {
                     var that = this;
-                    var ws = new WebSocket("ws://127.0.0.1:8080");
+                    var ws = new WebSocket(this.ws_url);
                     ws.onopen = function(evt) {
                         console.log("Connection open ...");
                         ws.send(that.key);
@@ -34,15 +69,37 @@
                     ws.onmessage = function(evt) {
                         console.log("Received Message: " + evt.data);
                         that.response = evt.data;
-                        // ws.close();
+                        var response = JSON.parse(that.response);
+                        if (response.code == 0) {
+                            if (response.data.action == 'open') {
+                                window.open("http://sniper.oa.com");
+                            }
+                        }
                     };
                     ws.onclose = function(evt) {
                         console.log("Connection closed.");
                     };
-                }   
+                },
+                send_push_data : function () {
+                    console.log("push data：" + this.push_data);
+                    $.ajax({
+                        type: "POST",
+                        url: this.http_url,
+                        dataType: "json",
+                        async: true,
+                        data: this.push_data,
+                        success: function(result) {
+                            console.log(" push data response：" + result);
+                        },
+                        error: function(result) {
+
+                        }
+                    });
+                }
             },
             mounted : function(){
                 this.key = this.get_key();
+                this.push_data = this.get_push_data();
                 this.init_ws();    
             }
         });
