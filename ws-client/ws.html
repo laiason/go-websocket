@@ -72,7 +72,10 @@
                         var response = JSON.parse(that.response);
                         if (response.code == 0) {
                             if (response.data.action == 'open') {
-                                window.open("http://sniper.oa.com");
+                                window.open("http://www.baidu.com");
+                            }
+                            else if(response.data.action == 'refresh') {
+                                location.href = location.href;
                             }
                         }
                     };
