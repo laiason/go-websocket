@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/gorilla/websocket"
 	"io/ioutil"
 	"log"
@@ -20,9 +19,9 @@ type Server struct {
 
 // websocket消息格式
 type wsMsg struct {
-	expiresTime int64
-	data interface{}
-	wsConn *websocket.Conn
+	expiresTime int64 `json:"expires_time"`
+	data interface{} `json:"data"`
+	wsConn *websocket.Conn `json:"ws_conn"`
 }
 
 // websocket响应消息格式
@@ -78,13 +77,14 @@ func wsHandler(response http.ResponseWriter, request *http.Request) {
 		// 消息过期时间
 		expiresTime := time.Now().Unix() + VALID_TIME
 		msg := wsMsg{wsConn : wsConn, expiresTime : expiresTime, data : []byte{}}
-
+		//	fmt.Println(key)
 		// 保存websocket消息
 		msgMap[key] = &msg
 
-		fmt.Println(key)
-
-		if err = wsConn.WriteMessage(websocket.TextMessage, []byte(key)); err != nil {
+		wsData := wsResponse{Code:0, MsgKey:key, Data: struct {}{}, ErrorMsg:""}
+		wsResp, _ := json.Marshal(wsData)
+		//	fmt.Println(wsResp)
+		if err = wsConn.WriteMessage(websocket.TextMessage, wsResp); err != nil {
 			goto ERR
 		}
 	}
@@ -157,7 +157,7 @@ func httpHandler(response http.ResponseWriter, request *http.Request)  {
 }
 
 func main() {
-	addrs := []Server{{"127.0.0.1", 8080, wsHandler}, {"127.0.0.1", 8081, httpHandler}}
+	addrs := []Server{{"0.0.0.0", 8080, wsHandler}, {"0.0.0.0", 8081, httpHandler}}
 
 	startServer := func (server Server)  {
 		mux := http.NewServeMux()
@@ -178,5 +178,3 @@ func main() {
 	// 阻塞
 	select {}
 }
-
-
