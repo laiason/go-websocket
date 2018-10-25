@@ -46,7 +46,7 @@
                 get_key : function() {
                     var url = window.location.href;
                     var timestamp = Date.parse( new Date());
-                    var login_name = 'justinlai';
+                    var login_name = 'login_name';
                     key = url + timestamp + login_name;
                     return hex_md5(key);
                 },
